@@ -1,6 +1,6 @@
 ---
-title: ChatGemini
-emoji: 🏃
+title: Chat-with-Gemini
+emoji: 💬
 colorFrom: pink
 colorTo: purple
 sdk: gradio
