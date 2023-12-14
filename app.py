@@ -4,7 +4,8 @@ import google.generativeai as genai
 import gradio as gr
 from PIL import Image
 
-TITLE = """<h1 align="center">Gemini Pro and Pro Vision via API 🚀</h1>"""
+TITLE = """<h1 align="center">Gemini Playground 💬</h1>"""
+SUBTITLE = """<h2 align="center">Play with Gemini Pro and Gemini Pro Vision API</h2>"""
 DUPLICATE = """
 <div style="text-align: center; display: flex; justify-content: center; align-items: center;">
     <a href="https://huggingface.co/spaces/SkalskiP/ChatGemini?duplicate=true">
@@ -32,6 +33,8 @@ def predict(
     temperature: float,
     max_output_tokens: int,
     stop_sequences: str,
+    top_k: int,
+    top_p: float,
     chatbot: List[Tuple[str, str]]
 ) -> Tuple[str, List[Tuple[str, str]]]:
     if not google_key:
@@ -43,7 +46,9 @@ def predict(
     generation_config = genai.types.GenerationConfig(
         temperature=temperature,
         max_output_tokens=max_output_tokens,
-        stop_sequences=preprocess_stop_sequences(stop_sequences=stop_sequences))
+        stop_sequences=preprocess_stop_sequences(stop_sequences=stop_sequences),
+        top_k=top_k,
+        top_p=top_p)
 
     if image_prompt is None:
         model = genai.GenerativeModel('gemini-pro')
@@ -110,6 +115,32 @@ stop_sequences_component = gr.Textbox(
         "response generation if the model encounters it. The sequence is not included "
         "as part of the response. You can add up to five stop sequences."
     ))
+top_k_component = gr.Slider(
+    minimum=1,
+    maximum=40,
+    value=32,
+    step=1,
+    label="Top-K",
+    info=(
+        "Top-k changes how the model selects tokens for output. A top-k of 1 means the "
+        "selected token is the most probable among all tokens in the model’s "
+        "vocabulary (also called greedy decoding), while a top-k of 3 means that the "
+        "next token is selected from among the 3 most probable tokens (using "
+        "temperature)."
+    ))
+top_p_component = gr.Slider(
+    minimum=0,
+    maximum=1,
+    value=1,
+    step=0.01,
+    label="Top-P",
+    info=(
+        "Top-p changes how the model selects tokens for output. Tokens are selected "
+        "from most probable to least until the sum of their probabilities equals the "
+        "top-p value. For example, if tokens A, B, and C have a probability of .3, .2, "
+        "and .1 and the top-p value is .5, then the model will select either A or B as "
+        "the next token (using temperature). "
+    ))
 
 inputs = [
     google_key_component,
@@ -118,11 +149,14 @@ inputs = [
     temperature_component,
     max_output_tokens_component,
     stop_sequences_component,
+    top_k_component,
+    top_p_component,
     chatbot_component
 ]
 
 with gr.Blocks() as demo:
     gr.HTML(TITLE)
+    gr.HTML(SUBTITLE)
     gr.HTML(DUPLICATE)
     with gr.Column():
         google_key_component.render()
@@ -135,6 +169,9 @@ with gr.Blocks() as demo:
             temperature_component.render()
             max_output_tokens_component.render()
             stop_sequences_component.render()
+            with gr.Accordion("Advanced", open=False):
+                top_k_component.render()
+                top_p_component.render()
 
     run_button_component.click(
         fn=predict,
