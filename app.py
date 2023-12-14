@@ -4,6 +4,8 @@ import google.generativeai as genai
 import gradio as gr
 from PIL import Image
 
+print("google-generativeai:", genai.__version__)
+
 TITLE = """<h1 align="center">Gemini Playground 💬</h1>"""
 SUBTITLE = """<h2 align="center">Play with Gemini Pro and Gemini Pro Vision API</h2>"""
 DUPLICATE = """
@@ -16,8 +18,10 @@ DUPLICATE = """
     </span>
 </div>
 """
-
-print("google-generativeai:", genai.__version__)
+AVATAR_IMAGES = (
+    None,
+    "https://media.roboflow.com/spaces/gemini-icon.png"
+)
 
 
 def preprocess_stop_sequences(stop_sequences: str) -> Optional[List[str]]:
@@ -78,7 +82,12 @@ google_key_component = gr.Textbox(
 )
 
 image_prompt_component = gr.Image(type="pil", label="Image", scale=1)
-chatbot_component = gr.Chatbot(label='Gemini', scale=2)
+chatbot_component = gr.Chatbot(
+    label='Gemini',
+    bubble_full_width=False,
+    avatar_images=AVATAR_IMAGES,
+    scale=2
+)
 text_prompt_component = gr.Textbox(
     placeholder="Hi there!",
     label="Ask me anything and press Enter"
