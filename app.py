@@ -10,7 +10,9 @@ DUPLICATE = """
     <a href="https://huggingface.co/spaces/SkalskiP/ChatGemini?duplicate=true">
         <img src="https://bit.ly/3gLdBN6" alt="Duplicate Space" style="margin-right: 10px;">
     </a>
-    <span>Duplicate the Space and run securely with your GOOGLE API KEY.</span>
+    <span>Duplicate the Space and run securely with your 
+        <a href="https://makersuite.google.com/app/apikey">GOOGLE API KEY</a>.
+    </span>
 </div>
 """
 
@@ -19,6 +21,7 @@ def predict(
     google_key: str,
     text_prompt: str,
     image_prompt: Optional[Image.Image],
+    temperature: float,
     chatbot: List[Tuple[str, str]]
 ) -> Tuple[str, List[Tuple[str, str]]]:
     if not google_key:
@@ -27,14 +30,21 @@ def predict(
             "Please follow the instructions in the README to set it up.")
 
     genai.configure(api_key=google_key)
+    generation_config = genai.types.GenerationConfig(temperature=temperature)
 
     if image_prompt is None:
         model = genai.GenerativeModel('gemini-pro')
-        response = model.generate_content(text_prompt, stream=True)
+        response = model.generate_content(
+            text_prompt,
+            stream=True,
+            generation_config=generation_config)
         response.resolve()
     else:
         model = genai.GenerativeModel('gemini-pro-vision')
-        response = model.generate_content([text_prompt, image_prompt], stream=True)
+        response = model.generate_content(
+            [text_prompt, image_prompt],
+            stream=True,
+            generation_config=generation_config)
         response.resolve()
 
     chatbot.append((text_prompt, response.text))
@@ -56,11 +66,19 @@ text_prompt_component = gr.Textbox(
     label="Ask me anything and press Enter"
 )
 run_button_component = gr.Button()
+temperature_component = gr.Slider(
+    minimum=0,
+    maximum=1.0,
+    value=0.5,
+    step=0.05,
+    label="Temperature",
+    info="Controls the randomness of the output.")
 
 inputs = [
     google_key_component,
     text_prompt_component,
     image_prompt_component,
+    temperature_component,
     chatbot_component
 ]
 
@@ -74,6 +92,8 @@ with gr.Blocks() as demo:
             chatbot_component.render()
         text_prompt_component.render()
         run_button_component.render()
+        with gr.Accordion("Parameters", open=False):
+            temperature_component.render()
 
     run_button_component.click(
         fn=predict,
