@@ -1,5 +1,5 @@
 ---
-title: Chat-with-Gemini
+title: Gemini Playground
 emoji: 💬
 colorFrom: pink
 colorTo: purple

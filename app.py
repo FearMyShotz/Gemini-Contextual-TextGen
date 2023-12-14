@@ -19,11 +19,19 @@ DUPLICATE = """
 print("google-generativeai:", genai.__version__)
 
 
+def preprocess_stop_sequences(stop_sequences: str) -> Optional[List[str]]:
+    if not stop_sequences:
+        return None
+    return [sequence.strip() for sequence in stop_sequences.split(",")]
+
+
 def predict(
     google_key: str,
     text_prompt: str,
     image_prompt: Optional[Image.Image],
     temperature: float,
+    max_output_tokens: int,
+    stop_sequences: str,
     chatbot: List[Tuple[str, str]]
 ) -> Tuple[str, List[Tuple[str, str]]]:
     if not google_key:
@@ -32,7 +40,10 @@ def predict(
             "Please follow the instructions in the README to set it up.")
 
     genai.configure(api_key=google_key)
-    generation_config = genai.types.GenerationConfig(temperature=temperature)
+    generation_config = genai.types.GenerationConfig(
+        temperature=temperature,
+        max_output_tokens=max_output_tokens,
+        stop_sequences=preprocess_stop_sequences(stop_sequences=stop_sequences))
 
     if image_prompt is None:
         model = genai.GenerativeModel('gemini-pro')
@@ -71,16 +82,42 @@ run_button_component = gr.Button()
 temperature_component = gr.Slider(
     minimum=0,
     maximum=1.0,
-    value=0.5,
+    value=0.4,
     step=0.05,
     label="Temperature",
-    info="Controls the randomness of the output.")
+    info=(
+        "Temperature controls the degree of randomness in token selection. Lower "
+        "temperatures are good for prompts that expect a true or correct response, "
+        "while higher temperatures can lead to more diverse or unexpected results. "
+    ))
+max_output_tokens_component = gr.Slider(
+    minimum=1,
+    maximum=2048,
+    value=1024,
+    step=1,
+    label="Token limit",
+    info=(
+        "Token limit determines the maximum amount of text output from one prompt. A "
+        "token is approximately four characters. The default value is 2048."
+    ))
+stop_sequences_component = gr.Textbox(
+    label="Add stop sequence",
+    value="",
+    type="text",
+    placeholder="STOP, END",
+    info=(
+        "A stop sequence is a series of characters (including spaces) that stops "
+        "response generation if the model encounters it. The sequence is not included "
+        "as part of the response. You can add up to five stop sequences."
+    ))
 
 inputs = [
     google_key_component,
     text_prompt_component,
     image_prompt_component,
     temperature_component,
+    max_output_tokens_component,
+    stop_sequences_component,
     chatbot_component
 ]
 
@@ -96,6 +133,8 @@ with gr.Blocks() as demo:
         run_button_component.render()
         with gr.Accordion("Parameters", open=False):
             temperature_component.render()
+            max_output_tokens_component.render()
+            stop_sequences_component.render()
 
     run_button_component.click(
         fn=predict,
