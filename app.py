@@ -16,6 +16,8 @@ DUPLICATE = """
 </div>
 """
 
+print("google-generativeai:", genai.__version__)
+
 
 def predict(
     google_key: str,
