@@ -1,3 +1,4 @@
+import time
 from typing import List, Tuple, Optional
 
 import google.generativeai as genai
@@ -30,9 +31,12 @@ def preprocess_stop_sequences(stop_sequences: str) -> Optional[List[str]]:
     return [sequence.strip() for sequence in stop_sequences.split(",")]
 
 
-def predict(
+def user(text_prompt: str, chatbot: List[Tuple[str, str]]):
+    return "", chatbot + [[text_prompt, None]]
+
+
+def bot(
     google_key: str,
-    text_prompt: str,
     image_prompt: Optional[Image.Image],
     temperature: float,
     max_output_tokens: int,
@@ -40,12 +44,13 @@ def predict(
     top_k: int,
     top_p: float,
     chatbot: List[Tuple[str, str]]
-) -> Tuple[str, List[Tuple[str, str]]]:
+):
     if not google_key:
         raise ValueError(
             "GOOGLE_API_KEY is not set. "
             "Please follow the instructions in the README to set it up.")
 
+    text_prompt = chatbot[-1][0]
     genai.configure(api_key=google_key)
     generation_config = genai.types.GenerationConfig(
         temperature=temperature,
@@ -69,8 +74,14 @@ def predict(
             generation_config=generation_config)
         response.resolve()
 
-    chatbot.append((text_prompt, response.text))
-    return "", chatbot
+    # streaming effect
+    chatbot[-1][1] = ""
+    for chunk in response:
+        for i in range(0, len(chunk.text), 10):
+            section = chunk.text[i:i + 10]
+            chatbot[-1][1] += section
+            time.sleep(0.01)
+            yield chatbot
 
 
 google_key_component = gr.Textbox(
@@ -151,9 +162,13 @@ top_p_component = gr.Slider(
         "the next token (using temperature). "
     ))
 
-inputs = [
-    google_key_component,
+user_inputs = [
     text_prompt_component,
+    chatbot_component
+]
+
+bot_inputs = [
+    google_key_component,
     image_prompt_component,
     temperature_component,
     max_output_tokens_component,
@@ -183,15 +198,21 @@ with gr.Blocks() as demo:
                 top_p_component.render()
 
     run_button_component.click(
-        fn=predict,
-        inputs=inputs,
+        fn=user,
+        inputs=user_inputs,
         outputs=[text_prompt_component, chatbot_component],
+        queue=False
+    ).then(
+        fn=bot, inputs=bot_inputs, outputs=[chatbot_component],
     )
 
     text_prompt_component.submit(
-        fn=predict,
-        inputs=inputs,
+        fn=user,
+        inputs=user_inputs,
         outputs=[text_prompt_component, chatbot_component],
+        queue=False
+    ).then(
+        fn=bot, inputs=bot_inputs, outputs=[chatbot_component],
     )
 
 demo.queue(max_size=99).launch(debug=True)
