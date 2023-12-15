@@ -1,3 +1,4 @@
+import os
 import time
 from typing import List, Tuple, Optional
 
@@ -25,6 +26,9 @@ AVATAR_IMAGES = (
 )
 
 
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+
+
 def preprocess_stop_sequences(stop_sequences: str) -> Optional[List[str]]:
     if not stop_sequences:
         return None
@@ -46,6 +50,7 @@ def bot(
     top_p: float,
     chatbot: List[Tuple[str, str]]
 ):
+    google_key = google_key if google_key else GOOGLE_API_KEY
     if not google_key:
         raise ValueError(
             "GOOGLE_API_KEY is not set. "
@@ -93,6 +98,7 @@ google_key_component = gr.Textbox(
     type="password",
     placeholder="...",
     info="You have to provide your own GOOGLE_API_KEY for this app to function properly",
+    visible=GOOGLE_API_KEY is None
 )
 
 image_prompt_component = gr.Image(type="pil", label="Image")
