@@ -38,6 +38,7 @@ def user(text_prompt: str, chatbot: List[Tuple[str, str]]):
 def bot(
     google_key: str,
     image_prompt: Optional[Image.Image],
+    image_prompt_2: Optional[Image.Image],
     temperature: float,
     max_output_tokens: int,
     stop_sequences: str,
@@ -59,7 +60,7 @@ def bot(
         top_k=top_k,
         top_p=top_p)
 
-    if image_prompt is None:
+    if image_prompt is None and image_prompt_2 is None:
         model = genai.GenerativeModel('gemini-pro')
         response = model.generate_content(
             text_prompt,
@@ -67,9 +68,11 @@ def bot(
             generation_config=generation_config)
         response.resolve()
     else:
+        contents = [text_prompt, image_prompt, image_prompt_2]
+        contents = [content for content in contents if content is not None]
         model = genai.GenerativeModel('gemini-pro-vision')
         response = model.generate_content(
-            [text_prompt, image_prompt],
+            contents=contents,
             stream=True,
             generation_config=generation_config)
         response.resolve()
@@ -92,7 +95,8 @@ google_key_component = gr.Textbox(
     info="You have to provide your own GOOGLE_API_KEY for this app to function properly",
 )
 
-image_prompt_component = gr.Image(type="pil", label="Image", scale=1)
+image_prompt_component = gr.Image(type="pil", label="Image")
+image_prompt_2_component = gr.Image(type="pil", label="Image")
 chatbot_component = gr.Chatbot(
     label='Gemini',
     bubble_full_width=False,
@@ -170,6 +174,7 @@ user_inputs = [
 bot_inputs = [
     google_key_component,
     image_prompt_component,
+    image_prompt_2_component,
     temperature_component,
     max_output_tokens_component,
     stop_sequences_component,
@@ -185,7 +190,10 @@ with gr.Blocks() as demo:
     with gr.Column():
         google_key_component.render()
         with gr.Row():
-            image_prompt_component.render()
+            with gr.Column(scale=1):
+                image_prompt_component.render()
+                with gr.Accordion("Multi Image", open=False):
+                    image_prompt_2_component.render()
             chatbot_component.render()
         text_prompt_component.render()
         run_button_component.render()
@@ -215,4 +223,4 @@ with gr.Blocks() as demo:
         fn=bot, inputs=bot_inputs, outputs=[chatbot_component],
     )
 
-demo.queue(max_size=99).launch(debug=True)
+demo.queue(max_size=99).launch(debug=False, show_error=True)
