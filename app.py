@@ -1,10 +1,11 @@
 import os
 import time
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 
 import google.generativeai as genai
 import gradio as gr
 from PIL import Image
+
 
 print("google-generativeai:", genai.__version__)
 
@@ -42,6 +43,18 @@ def preprocess_image(image: Image.Image) -> Optional[Image.Image]:
     return image.resize((IMAGE_WIDTH, image_height))
 
 
+def preprocess_chat_history(
+    history: List[Tuple[Optional[str], Optional[str]]]
+) -> List[Dict[str, List[str]]]:
+    messages = []
+    for user_message, model_message in history:
+        if user_message is not None:
+            messages.append({'role': 'user', 'parts': [user_message]})
+        if model_message is not None:
+            messages.append({'role': 'model', 'parts': [model_message]})
+    return messages
+
+
 def user(text_prompt: str, chatbot: List[Tuple[str, str]]):
     return "", chatbot + [[text_prompt, None]]
 
@@ -74,7 +87,7 @@ def bot(
     if image_prompt is None:
         model = genai.GenerativeModel('gemini-pro')
         response = model.generate_content(
-            text_prompt,
+            preprocess_chat_history(chatbot),
             stream=True,
             generation_config=generation_config)
         response.resolve()
@@ -106,12 +119,13 @@ google_key_component = gr.Textbox(
     visible=GOOGLE_API_KEY is None
 )
 
-image_prompt_component = gr.Image(type="pil", label="Image", scale=1)
+image_prompt_component = gr.Image(type="pil", label="Image", scale=1, height=400)
 chatbot_component = gr.Chatbot(
     label='Gemini',
     bubble_full_width=False,
     avatar_images=AVATAR_IMAGES,
-    scale=2
+    scale=2,
+    height=400
 )
 text_prompt_component = gr.Textbox(
     placeholder="Hi there!",
