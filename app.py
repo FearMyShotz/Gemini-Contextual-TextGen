@@ -1,11 +1,11 @@
 import os
 import time
-from typing import List, Tuple, Optional, Dict
+import uuid
+from typing import List, Tuple, Optional, Dict, Union
 
 import google.generativeai as genai
 import gradio as gr
 from PIL import Image
-
 
 print("google-generativeai:", genai.__version__)
 
@@ -29,7 +29,9 @@ AVATAR_IMAGES = (
     "https://media.roboflow.com/spaces/gemini-icon.png"
 )
 
+IMAGE_CACHE_DIRECTORY = "/tmp"
 IMAGE_WIDTH = 512
+CHAT_HISTORY = List[Tuple[Optional[Union[Tuple[str], str]], Optional[str]]]
 
 
 def preprocess_stop_sequences(stop_sequences: str) -> Optional[List[str]]:
@@ -43,39 +45,62 @@ def preprocess_image(image: Image.Image) -> Optional[Image.Image]:
     return image.resize((IMAGE_WIDTH, image_height))
 
 
+def cache_pil_image(image: Image.Image) -> str:
+    image_filename = f"{uuid.uuid4()}.jpeg"
+    os.makedirs(IMAGE_CACHE_DIRECTORY, exist_ok=True)
+    image_path = os.path.join(IMAGE_CACHE_DIRECTORY, image_filename)
+    image.save(image_path, "JPEG")
+    return image_path
+
+
 def preprocess_chat_history(
-    history: List[Tuple[Optional[str], Optional[str]]]
-) -> List[Dict[str, List[str]]]:
+    history: CHAT_HISTORY
+) -> List[Dict[str, Union[str, List[str]]]]:
     messages = []
     for user_message, model_message in history:
-        if user_message is not None:
+        if isinstance(user_message, tuple):
+            pass
+        elif user_message is not None:
             messages.append({'role': 'user', 'parts': [user_message]})
         if model_message is not None:
             messages.append({'role': 'model', 'parts': [model_message]})
     return messages
 
 
-def user(text_prompt: str, chatbot: List[Tuple[str, str]]):
-    return "", chatbot + [[text_prompt, None]]
+def upload(files: Optional[List[str]], chatbot: CHAT_HISTORY) -> CHAT_HISTORY:
+    for file in files:
+        image = Image.open(file).convert('RGB')
+        image = preprocess_image(image)
+        image_path = cache_pil_image(image)
+        chatbot.append(((image_path,), None))
+    return chatbot
+
+
+def user(text_prompt: str, chatbot: CHAT_HISTORY):
+    if text_prompt:
+        chatbot.append((text_prompt, None))
+    return "", chatbot
 
 
 def bot(
     google_key: str,
-    image_prompt: Optional[Image.Image],
+    files: Optional[List[str]],
     temperature: float,
     max_output_tokens: int,
     stop_sequences: str,
     top_k: int,
     top_p: float,
-    chatbot: List[Tuple[str, str]]
+    chatbot: CHAT_HISTORY
 ):
+    if len(chatbot) == 0:
+        return chatbot
+
     google_key = google_key if google_key else GOOGLE_API_KEY
     if not google_key:
         raise ValueError(
             "GOOGLE_API_KEY is not set. "
             "Please follow the instructions in the README to set it up.")
 
-    text_prompt = chatbot[-1][0]
     genai.configure(api_key=google_key)
     generation_config = genai.types.GenerationConfig(
         temperature=temperature,
@@ -84,21 +109,23 @@ def bot(
         top_k=top_k,
         top_p=top_p)
 
-    if image_prompt is None:
-        model = genai.GenerativeModel('gemini-pro')
-        response = model.generate_content(
-            preprocess_chat_history(chatbot),
-            stream=True,
-            generation_config=generation_config)
-        response.resolve()
-    else:
-        image_prompt = preprocess_image(image_prompt)
+    if files:
+        text_prompt = [chatbot[-1][0]] \
+            if chatbot[-1][0] and isinstance(chatbot[-1][0], str) \
+            else []
+        image_prompt = [Image.open(file).convert('RGB') for file in files]
         model = genai.GenerativeModel('gemini-pro-vision')
         response = model.generate_content(
-            contents=[text_prompt, image_prompt],
+            text_prompt + image_prompt,
             stream=True,
             generation_config=generation_config)
-        response.resolve()
+    else:
+        messages = preprocess_chat_history(chatbot)
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content(
+            messages,
+            stream=True,
+            generation_config=generation_config)
 
     # streaming effect
     chatbot[-1][1] = ""
@@ -118,8 +145,6 @@ google_key_component = gr.Textbox(
     info="You have to provide your own GOOGLE_API_KEY for this app to function properly",
     visible=GOOGLE_API_KEY is None
 )
-
-image_prompt_component = gr.Image(type="pil", label="Image", scale=1, height=400)
 chatbot_component = gr.Chatbot(
     label='Gemini',
     bubble_full_width=False,
@@ -128,10 +153,12 @@ chatbot_component = gr.Chatbot(
     height=400
 )
 text_prompt_component = gr.Textbox(
-    placeholder="Hi there!",
-    label="Ask me anything and press Enter"
+    placeholder="Hi there! [press Enter]", show_label=False, autofocus=True, scale=8
 )
-run_button_component = gr.Button()
+upload_button_component = gr.UploadButton(
+    label="Upload Images", file_count="multiple", file_types=["image"], scale=1
+)
+run_button_component = gr.Button(value="Run", variant="primary", scale=1)
 temperature_component = gr.Slider(
     minimum=0,
     maximum=1.0,
@@ -197,7 +224,7 @@ user_inputs = [
 
 bot_inputs = [
     google_key_component,
-    image_prompt_component,
+    upload_button_component,
     temperature_component,
     max_output_tokens_component,
     stop_sequences_component,
@@ -212,11 +239,11 @@ with gr.Blocks() as demo:
     gr.HTML(DUPLICATE)
     with gr.Column():
         google_key_component.render()
+        chatbot_component.render()
         with gr.Row():
-            image_prompt_component.render()
-            chatbot_component.render()
-        text_prompt_component.render()
-        run_button_component.render()
+            text_prompt_component.render()
+            upload_button_component.render()
+            run_button_component.render()
         with gr.Accordion("Parameters", open=False):
             temperature_component.render()
             max_output_tokens_component.render()
@@ -241,6 +268,13 @@ with gr.Blocks() as demo:
         queue=False
     ).then(
         fn=bot, inputs=bot_inputs, outputs=[chatbot_component],
+    )
+
+    upload_button_component.upload(
+        fn=upload,
+        inputs=[upload_button_component, chatbot_component],
+        outputs=[chatbot_component],
+        queue=False
     )
 
 demo.queue(max_size=99).launch(debug=False, show_error=True)
