@@ -11,7 +11,7 @@ stop_sequences = ""
 top_k = 64
 top_p = 0.95
 
-def generate(prompt):
+def predict(text):
     model = genai.GenerativeModel(model_name)
     generation_config = genai.types.GenerationConfig(
         temperature=temperature,
@@ -21,7 +21,7 @@ def generate(prompt):
     )
     try:
         response = model.generate_content(
-            contents=[prompt],
+            contents=[text],
             generation_config=generation_config
         )
         generated_text = ''.join([chunk.text for chunk in response if hasattr(chunk, 'text')])
@@ -33,9 +33,9 @@ title = "Text Generation with Google GenAI"
 description = "Generate text using Google GenAI API with customizable models and parameters."
 
 iface = gr.Interface(
-    fn=generate,
+    fn=predict,
     inputs=gr.Textbox(label="Enter your prompt here", placeholder="Type something..."),
-    outputs=gr.Textbox(label="Generated Text"),
+    outputs='text',
     title=title,
     description=description,
 )
