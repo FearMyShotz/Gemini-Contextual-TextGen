@@ -19,11 +19,14 @@ def generate(prompt):
         top_k=top_k,
         top_p=top_p
     )
-    response = model.generate_content(
-        contents=[prompt],
-        generation_config=generation_config
-    )
-    generated_text = ''.join([chunk.text for chunk in response])
+    try:
+        response = model.generate_content(
+            contents=[prompt],
+            generation_config=generation_config
+        )
+        generated_text = ''.join([chunk.text for chunk in response if hasattr(chunk, 'text')])
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
     return generated_text
 
 title = "Text Generation with Google GenAI"
