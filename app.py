@@ -24,7 +24,7 @@ def generate_text(prompt, model_name, temperature, max_tokens, stop_sequences, t
     
     # Generierung der Antwort
     response = model.generate_content(
-        prompt=prompt,
+        contents=[prompt],
         generation_config=generation_config
     )
     
