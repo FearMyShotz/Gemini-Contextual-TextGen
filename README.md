@@ -5,7 +5,6 @@
 ## Features
 
 - **Contextual Text Generation**: The system preserves the chat history to maintain context across multiple interactions, leading to more coherent and relevant responses.
-- **Flexible API**: Built with FastAPI, the API allows easy integration into various applications.
 - **Gradio Interface**: Provides a user-friendly web interface for testing and interacting with the model.
 - **Hugging Face Integration**: Easily deployable on Hugging Face Spaces, making it accessible and shareable.
 
