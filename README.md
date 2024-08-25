@@ -1,3 +1,14 @@
+---
+title: Gemini-Contextual-TextGen
+emoji: 💬
+colorFrom: pink
+colorTo: purple
+sdk: gradio
+sdk_version: 4.42.0
+app_file: app.py
+pinned: false
+---
+
 # Gemini-Contextual-TextGen
 
 **Gemini-Contextual-TextGen** is a project that leverages the Google AI Python SDK for the Gemini API (see [generative-ai-python](https://github.com/google-gemini/generative-ai-python)) to generate contextual text responses. It maintains conversation history and provides a simple API interface using FastAPI and Gradio for seamless integration with Hugging Face Spaces.
