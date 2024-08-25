@@ -8,7 +8,9 @@ sdk_version: 4.42.0
 app_file: app.py
 pinned: false
 ---
-
+______________________________________________________________________
+[![Python Version][python-image]][python-url]
+[![Hugging Face][huggingface-image]][huggingface-url]
 # Gemini-Contextual-TextGen
 
 **Gemini-Contextual-TextGen** is a project that leverages the Google AI Python SDK for the Gemini API (see [generative-ai-python](https://github.com/google-gemini/generative-ai-python)) to generate contextual text responses. It maintains conversation history and provides a simple API interface using FastAPI and Gradio for seamless integration with Hugging Face Spaces.
@@ -78,3 +80,9 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 - [Google Generative AI](https://cloud.google.com/generative-ai) for the Gemini model.
 - [Hugging Face](https://huggingface.co/) for providing the platform to share and deploy the model.
+
+[python-image]: https://img.shields.io/badge/Python-3.9%2B-brightgreen.svg
+[python-url]: https://docs.python.org/3.9/
+[huggingface-url]: https://huggingface.co/spaces/FearMyShotz/Gemini
+[huggingface-image]: https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Gemini-ffc107?color=ffc107&logoColor=white
+
